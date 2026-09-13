@@ -21,6 +21,16 @@ cat >"$tmp_dir/bin/systemctl" <<'SCRIPT'
 #!/bin/bash
 printf 'systemctl:%s\n' "$*" >>"$TEST_LOG"
 SCRIPT
+# The HUD is an omarchy-shell plugin, so the install also talks to the running
+# shell. Both are stubbed; the script's job is the order between them.
+cat >"$tmp_dir/bin/omarchy-shell" <<'SCRIPT'
+#!/bin/bash
+printf 'omarchy-shell:%s\n' "$*" >>"$TEST_LOG"
+SCRIPT
+cat >"$tmp_dir/bin/omarchy" <<'SCRIPT'
+#!/bin/bash
+printf 'omarchy:%s\n' "$*" >>"$TEST_LOG"
+SCRIPT
 chmod +x "$tmp_dir/bin"/*
 export PATH="$tmp_dir/bin:$PATH"
 
@@ -30,13 +40,21 @@ export PATH="$tmp_dir/bin:$PATH"
 grep -q '^add:ghost$' "$TEST_LOG" || fail "Ghost install adds the ghost package"
 pass "Ghost install adds the ghost package"
 
-grep -q '^systemctl:--user enable --now ghostd.service ghost-shell.service$' "$TEST_LOG" ||
-  fail "Ghost install enables and starts the two user units"
-pass "Ghost install enables and starts the two user units"
+grep -q '^systemctl:--user enable --now ghostd.service$' "$TEST_LOG" ||
+  fail "Ghost install enables and starts the daemon unit"
+pass "Ghost install enables and starts the daemon unit"
+
+grep -q '^omarchy:plugin enable ferdousbhai.ghost$' "$TEST_LOG" ||
+  fail "Ghost install enables the HUD plugin in the running shell"
+pass "Ghost install enables the HUD plugin in the running shell"
+
+[[ -L $HOME/.config/omarchy/plugins/ferdousbhai.ghost ]] ||
+  fail "Ghost install links the packaged plugin into the user's plugins directory"
+pass "Ghost install links the packaged plugin into the user's plugins directory"
 
 [[ $(grep -n '^add:ghost$' "$TEST_LOG" | cut -d: -f1) -lt $(grep -n 'enable --now' "$TEST_LOG" | cut -d: -f1) ]] ||
-  fail "Ghost install starts the units only after the package is present"
-pass "Ghost install starts the units only after the package is present"
+  fail "Ghost install starts the daemon only after the package is present"
+pass "Ghost install starts the daemon only after the package is present"
 
 grep -q 'Super + Ctrl + G' "$tmp_dir/output" || fail "Ghost install names the summon key"
 pass "Ghost install names the summon key"
