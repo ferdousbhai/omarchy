@@ -59,6 +59,20 @@ pass "Ghost install starts the daemon only after the package is present"
 grep -q 'Super + Ctrl + G' "$tmp_dir/output" || fail "Ghost install names the summon key"
 pass "Ghost install names the summon key"
 
+# A real directory where the plugin symlink belongs — an older install, or a
+# manual copy — must not be silently linked *inside*. `ln -sfn` does exactly
+# that and reports success, leaving a plugin the shell cannot load.
+rm -rf "$HOME/.config/omarchy/plugins/ferdousbhai.ghost"
+mkdir -p "$HOME/.config/omarchy/plugins/ferdousbhai.ghost"
+: >"$TEST_LOG"
+rc=0
+"$ROOT/bin/omarchy-install-ai-ghost" >/dev/null 2>&1 || rc=$?
+[[ $rc != 0 ]] || fail "Ghost install refuses a real directory in place of the plugin link"
+[[ ! -e $HOME/.config/omarchy/plugins/ferdousbhai.ghost/plugin ]] ||
+  fail "Ghost install refuses a real directory in place of the plugin link" "nested the link inside it"
+pass "Ghost install refuses a real directory in place of the plugin link"
+rm -rf "$HOME/.config/omarchy/plugins/ferdousbhai.ghost"
+
 # A failed package install must not try to start units that do not exist.
 cat >"$tmp_dir/bin/omarchy-pkg-add" <<'SCRIPT'
 #!/bin/bash
