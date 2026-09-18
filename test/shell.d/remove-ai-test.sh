@@ -379,9 +379,7 @@ rc=0
   fail "OpenClaw removal aborts when systemd cannot be reached" "package dropped anyway"
 pass "OpenClaw removal aborts when systemd cannot be reached"
 
-# Ghost's removal takes the package, its daemon unit, and its HUD plugin, and
-# nothing of the owner's: ghost homes, credentials, and daemon state stay where
-# they are.
+# Ghost UI removal preserves the runtime and owner data.
 cat >"$tmp_dir/bin/systemctl" <<'SCRIPT'
 #!/bin/bash
 printf 'systemctl:%s\n' "$*" >>"$TEST_LOG"
@@ -396,6 +394,13 @@ cat >"$tmp_dir/bin/omarchy-pkg-present" <<'SCRIPT'
 [[ $1 == ghost ]]
 SCRIPT
 chmod +x "$tmp_dir/bin/omarchy-pkg-present"
+for command in sudo pacman; do
+  cat >"$tmp_dir/bin/$command" <<'SCRIPT'
+#!/bin/bash
+printf '%s:%s\n' "${0##*/}" "$*" >>"$TEST_LOG"
+SCRIPT
+  chmod +x "$tmp_dir/bin/$command"
+done
 
 : >"$TEST_LOG"
 fresh_home
@@ -407,9 +412,12 @@ ln -sfn /usr/share/ghost/plugin "$HOME/.config/omarchy/plugins/ferdousbhai.ghost
 grep -q '^drop:ghost$' "$TEST_LOG" || fail "Ghost removal drops the package"
 pass "Ghost removal drops the package"
 
-grep -q '^systemctl:--user disable --now ghostd.service$' "$TEST_LOG" ||
-  fail "Ghost removal stops the daemon before the package goes"
-pass "Ghost removal stops the daemon before the package goes"
+! grep -q '^systemctl:' "$TEST_LOG" || fail "Ghost UI removal leaves the daemon running"
+grep -q '^sudo:pacman -D --asexplicit ghost-runtime$' "$TEST_LOG" ||
+  fail "Ghost UI removal preserves the runtime as an explicit package"
+[[ $(grep -n '^sudo:pacman -D' "$TEST_LOG" | cut -d: -f1) -lt $(grep -n '^drop:ghost$' "$TEST_LOG" | cut -d: -f1) ]] ||
+  fail "Ghost UI removal preserves the runtime before removing the UI"
+pass "Ghost UI removal preserves the installed and running runtime"
 
 grep -q '^omarchy:plugin remove ferdousbhai.ghost --yes$' "$TEST_LOG" ||
   fail "Ghost removal takes the HUD plugin out of the running shell"

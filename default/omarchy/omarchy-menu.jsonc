@@ -312,7 +312,7 @@
   "remove.service.tailscale": {"icon":"","label":"Tailscale","when":"omarchy-pkg-present tailscale","action":"omarchy-launch-floating-terminal-with-presentation omarchy-remove-service-tailscale"},
   "remove.ai.chatgpt": {"icon":"","iconFont":"omarchy","label":"ChatGPT Desktop","when":"omarchy-pkg-present openai-codex-desktop","action":"omarchy-launch-floating-terminal-with-presentation omarchy-remove-ai-chatgpt"},
   "remove.ai.claude": {"icon":"","iconFont":"omarchy","label":"Claude Desktop","when":"omarchy-pkg-present claude-desktop","action":"omarchy-launch-floating-terminal-with-presentation omarchy-remove-ai-claude"},
-  "remove.ai.ghost": {"icon":"󰊠","label":"Ghost","when":"omarchy-pkg-present ghost","action":"omarchy-launch-floating-terminal-with-presentation omarchy-remove-ai-ghost"},
+  "remove.ai.ghost": {"icon":"󰊠","label":"Ghost UI","when":"omarchy-pkg-present ghost","action":"omarchy-launch-floating-terminal-with-presentation omarchy-remove-ai-ghost"},
   "remove.ai.dictation": {"icon":"","label":"Dictation","when":"omarchy-pkg-present voxtype-bin","action":"omarchy-launch-floating-terminal-with-presentation omarchy-voxtype-remove"},
   "remove.ai.grok-bot": {"icon":"","iconFont":"omarchy","label":"Grok Bot","when":"omarchy-pkg-present grok-bot","action":"omarchy-launch-floating-terminal-with-presentation omarchy-remove-ai-grok-bot"},
   "remove.ai.lm-studio": {"icon":"","iconFont":"omarchy","label":"LM Studio","when":"omarchy-pkg-present lmstudio-bin","action":"omarchy-launch-floating-terminal-with-presentation omarchy-remove-ai-lm-studio"},
