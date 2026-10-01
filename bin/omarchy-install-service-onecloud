@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# omarchy:summary=Install OneCloud and open it to set up this computer.
+# omarchy:requires-sudo=true
+
+set -e
+
+echo "Installing OneCloud..."
+omarchy-pkg-add onecloud
+
+echo "Opening OneCloud..."
+setsid uwsm-app -- /usr/bin/onecloud-app >/dev/null 2>&1 &
+
+echo ""
+echo "OneCloud has been installed."
+echo "Set up this computer in the app: your own S3 bucket for a new account,"
+echo "or a join code from one of your computers."
