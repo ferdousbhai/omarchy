@@ -28,7 +28,7 @@ You start Spotify using `Super + Shift + M`. Like 1Password, the hotkey kicks of
 
 ## Omacloud
 
-[Omacloud](https://github.com/ferdousbhai/omacloud) keeps Desktop, Documents and Pictures in sync on every Omarchy computer, with your Omarchy settings, package lists and ssh and gpg keys alongside, every version kept and everything end to end encrypted. It stores everything in your own S3 bucket (Hetzner, R2, B2, MinIO), so nobody sits in between, and it's plain restic underneath, so you can always restore without it. Select _Install > Service > Omacloud_ from the Omarchy menu, then set up the computer in the app that opens: your bucket for a new account, or a join code from one of your computers.
+[Omacloud](https://omacloud.computer/) keeps your files, Omarchy settings and ssh and gpg keys in sync on every Omarchy computer, end to end encrypted, in a storage bucket of your own or, optionally, on Omacloud storage (by invitation for now). To set it up, select _Install > Service > Omacloud_ from the Omarchy menu, then add your bucket, sign in, or paste a join code from one of your computers in the app that opens.
 
 ## Tailscale
 

@@ -36,11 +36,25 @@ pass "install adds omacloud, opens the app, and says how to set up"
 
 : >"$TEST_LOG"
 output=$("$ROOT/bin/omarchy-remove-service-omacloud")
+grep -qx 'systemctl:--user disable --now omacloud' "$TEST_LOG" ||
+  fail "remove disables the user service" "$(cat "$TEST_LOG")"
 grep -qx 'omarchy-pkg-drop:omacloud' "$TEST_LOG" ||
   fail "remove drops the omacloud package" "$(cat "$TEST_LOG")"
 [[ $output == *"Your files stay"* ]] ||
   fail "remove says the files stay" "$output"
-pass "remove drops the package and leaves the user's files where they are"
+pass "remove disables the service, drops the package and leaves the user's files where they are"
+
+: >"$TEST_LOG"
+cat >"$tmp_dir/bin/omarchy-pkg-drop" <<'SCRIPT'
+#!/bin/bash
+exit 1
+SCRIPT
+if output=$("$ROOT/bin/omarchy-remove-service-omacloud"); then
+  fail "remove fails when the package can't be dropped" "$output"
+fi
+[[ $output != *"has been removed"* ]] ||
+  fail "remove doesn't claim success when the drop fails" "$output"
+pass "remove fails without claiming success when the package can't be dropped"
 
 menu="$ROOT/default/omarchy/omarchy-menu.jsonc"
 grep -q '"install.service.omacloud".*omarchy-install-service-omacloud' "$menu" ||
