@@ -38,7 +38,7 @@ It gets a panel in the bar, a web app for the admin console, and Taildrop for se
 
 ## Cloudmail
 
-[Cloudmail](https://github.com/ferdousbhai/cloud-mail) is email on your own domains that runs entirely in your own Cloudflare account, using Email Routing to receive and Email Service to send, with a Screener that holds first-time senders until you let them in. Select _Install > Service > Cloudmail_ from the Omarchy menu, then run `npx wrangler login && cloudmail setup you@yourdomain.com` to deploy it. The Cloudmail app follows your Omarchy theme, and the `cloudmail` command (or `cmail`) does everything from the terminal. Sending to anyone needs Cloudflare's Workers Paid plan.
+[Cloudmail](https://github.com/ferdousbhai/cloud-mail) is email on your own domains that runs entirely in your own Cloudflare account, using Email Routing to receive and Email Service to send, with a Screener that holds first-time senders until you let them in. Select _Install > Service > Cloudmail_ from the Omarchy menu, then run `cloudmail setup you@yourdomain.com` to deploy it (it signs you in to Cloudflare first if needed). The Cloudmail app follows your Omarchy theme, and the `cloudmail` command (or `cmail`) does everything from the terminal. Sending to anyone needs Cloudflare's Workers Paid plan.
 
 ## NordVPN
 
