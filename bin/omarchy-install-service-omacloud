@@ -13,5 +13,5 @@ setsid uwsm-app -- /usr/bin/omacloud-app >/dev/null 2>&1 &
 
 echo ""
 echo "Omacloud has been installed."
-echo "Set up this computer in the app: add your own storage bucket, paste a join code"
+echo "Set up this computer in the app: add your own storage (an S3 bucket or Dropbox), paste a join code"
 echo "from one of your computers, or, optionally, sign in with Google for Omacloud storage."

@@ -6,7 +6,11 @@
 set -e
 
 systemctl --user disable --now omacloud 2>/dev/null || true
-omarchy-pkg-drop omacloud
+if ! omarchy-pkg-drop omacloud; then
+  # Still installed: turn sync back on rather than leave it off.
+  systemctl --user enable --now omacloud 2>/dev/null || true
+  exit 1
+fi
 
 echo ""
 echo "Omacloud has been removed."
