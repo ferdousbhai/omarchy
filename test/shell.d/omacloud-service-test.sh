@@ -47,6 +47,7 @@ pass "remove disables the service, drops the package and leaves the user's files
 : >"$TEST_LOG"
 cat >"$tmp_dir/bin/omarchy-pkg-drop" <<'SCRIPT'
 #!/bin/bash
+printf 'omarchy-pkg-drop:%s\n' "$*" >>"$TEST_LOG"
 exit 1
 SCRIPT
 if output=$("$ROOT/bin/omarchy-remove-service-omacloud"); then
@@ -54,7 +55,9 @@ if output=$("$ROOT/bin/omarchy-remove-service-omacloud"); then
 fi
 [[ $output != *"has been removed"* ]] ||
   fail "remove doesn't claim success when the drop fails" "$output"
-pass "remove fails without claiming success when the package can't be dropped"
+grep -qx 'systemctl:--user enable --now omacloud' "$TEST_LOG" ||
+  fail "remove turns the service back on when the drop fails" "$(cat "$TEST_LOG")"
+pass "remove fails without claiming success, and turns sync back on, when the package can't be dropped"
 
 menu="$ROOT/default/omarchy/omarchy-menu.jsonc"
 grep -q '"install.service.omacloud".*omarchy-install-service-omacloud' "$menu" ||
