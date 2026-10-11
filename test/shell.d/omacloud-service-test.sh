@@ -11,62 +11,87 @@ mkdir -p "$tmp_dir/bin"
 export TEST_LOG="$tmp_dir/log"
 
 # Package removal and systemd are stubbed; the script's job is what it asks
-# for.
-for stub in omarchy-pkg-drop; do
-  cat >"$tmp_dir/bin/$stub" <<SCRIPT
+# for, and in what order. The drop fails when DROP_FAILS is set, and
+# systemctl answers is-active from SERVICE_ACTIVE.
+cat >"$tmp_dir/bin/omarchy-pkg-drop" <<'SCRIPT'
 #!/bin/bash
-printf '%s:%s\n' "$stub" "\$*" >>"\$TEST_LOG"
+printf 'omarchy-pkg-drop:%s\n' "$*" >>"$TEST_LOG"
+[[ -z ${DROP_FAILS:-} ]]
 SCRIPT
-  chmod +x "$tmp_dir/bin/$stub"
-done
-# systemctl answers is-enabled and is-active from SYSTEMCTL_STATE.
 cat >"$tmp_dir/bin/systemctl" <<'SCRIPT'
 #!/bin/bash
 printf 'systemctl:%s\n' "$*" >>"$TEST_LOG"
 for arg; do
   case $arg in
-    is-enabled) [[ $SYSTEMCTL_STATE == *enabled* ]]; exit ;;
-    is-active) [[ $SYSTEMCTL_STATE == *active* ]]; exit ;;
+    is-active) [[ -n ${SERVICE_ACTIVE:-} ]]; exit ;;
+    stop) [[ -z ${STOP_FAILS:-} ]]; exit ;;
   esac
 done
 SCRIPT
-chmod +x "$tmp_dir/bin/systemctl"
+chmod +x "$tmp_dir/bin/omarchy-pkg-drop" "$tmp_dir/bin/systemctl"
 export PATH="$tmp_dir/bin:$PATH"
-export SYSTEMCTL_STATE="enabled active"
 
-output=$("$ROOT/bin/omarchy-remove-service-omacloud")
-grep -qx 'systemctl:--user disable --now omacloud' "$TEST_LOG" ||
-  fail "remove disables the user service" "$(cat "$TEST_LOG")"
-grep -qx 'omarchy-pkg-drop:omacloud' "$TEST_LOG" ||
+# Runs the remover; leaves its output in $output and exit status in $status.
+remove() {
+  : >"$TEST_LOG"
+  status=0
+  output=$("$ROOT/bin/omarchy-remove-service-omacloud" 2>&1) || status=$?
+}
+
+logged() {
+  grep -qx "$1" "$TEST_LOG"
+}
+
+line_of() {
+  grep -nx "$1" "$TEST_LOG" | head -1 | cut -d: -f1
+}
+
+# The remover never reads whether sync is enabled: disable runs either way,
+# so enabled or not only matters through whether sync is running.
+
+# Running sync (enabled, or started by hand while disabled): dropped first,
+# then stopped and its links cleared.
+SERVICE_ACTIVE=1 remove
+((status == 0)) || fail "remove succeeds when the package drops" "$output"
+logged 'omarchy-pkg-drop:omacloud' ||
   fail "remove drops the omacloud package" "$(cat "$TEST_LOG")"
+logged 'systemctl:--user stop omacloud' ||
+  fail "remove stops running sync" "$(cat "$TEST_LOG")"
+logged 'systemctl:--user disable omacloud' ||
+  fail "remove clears enable links left in ~/.config" "$(cat "$TEST_LOG")"
+(($(line_of 'omarchy-pkg-drop:omacloud') < $(line_of 'systemctl:--user stop omacloud'))) ||
+  fail "remove drops the package before touching the service" "$(cat "$TEST_LOG")"
 [[ $output == *"Your files stay"* ]] ||
   fail "remove says the files stay" "$output"
-pass "remove disables the service, drops the package and leaves the user's files where they are"
+pass "remove drops the package, then stops sync and clears its links, and leaves the user's files where they are"
 
-: >"$TEST_LOG"
-cat >"$tmp_dir/bin/omarchy-pkg-drop" <<'SCRIPT'
-#!/bin/bash
-printf 'omarchy-pkg-drop:%s\n' "$*" >>"$TEST_LOG"
-exit 1
-SCRIPT
-if output=$("$ROOT/bin/omarchy-remove-service-omacloud"); then
-  fail "remove fails when the package can't be dropped" "$output"
-fi
+# Enabled but not running: nothing to stop, links still cleared.
+SERVICE_ACTIVE="" remove
+((status == 0)) || fail "remove succeeds when sync isn't running" "$output"
+! logged 'systemctl:--user stop omacloud' ||
+  fail "remove doesn't stop sync that isn't running" "$(cat "$TEST_LOG")"
+logged 'systemctl:--user disable omacloud' ||
+  fail "remove clears enable links when sync isn't running" "$(cat "$TEST_LOG")"
+pass "remove clears the links of sync that's enabled but not running"
+
+# A stop that fails after the drop is reported, not hidden.
+SERVICE_ACTIVE=1 STOP_FAILS=1 remove
+((status != 0)) || fail "remove fails when running sync can't be stopped" "$output"
 [[ $output != *"has been removed"* ]] ||
-  fail "remove doesn't claim success when the drop fails" "$output"
-grep -qx 'systemctl:--user enable omacloud' "$TEST_LOG" &&
-  grep -qx 'systemctl:--user start omacloud' "$TEST_LOG" ||
-  fail "remove turns sync back on when the drop fails" "$(cat "$TEST_LOG")"
-pass "remove fails without claiming success, and turns sync back on, when the package can't be dropped"
+  fail "remove doesn't claim success when sync can't be stopped" "$output"
+pass "remove fails without claiming success when running sync can't be stopped"
 
-: >"$TEST_LOG"
-export SYSTEMCTL_STATE=""
-if "$ROOT/bin/omarchy-remove-service-omacloud" >/dev/null; then
-  fail "remove fails when the package can't be dropped"
-fi
-! grep -Eq 'systemctl:--user (enable|start) omacloud' "$TEST_LOG" ||
-  fail "remove leaves sync off when it was off and the drop fails" "$(cat "$TEST_LOG")"
-pass "remove leaves sync off when it was off before a failed drop"
+# A failed drop leaves the service alone in every state, so there's nothing
+# to restore.
+for active in 1 ""; do
+  SERVICE_ACTIVE=$active DROP_FAILS=1 remove
+  ((status != 0)) || fail "remove fails when the package can't be dropped" "$output"
+  [[ $output != *"has been removed"* ]] ||
+    fail "remove doesn't claim success when the drop fails" "$output"
+  ! grep -q '^systemctl:' "$TEST_LOG" ||
+    fail "remove leaves the service alone when the drop fails (active=${active:-no})" "$(cat "$TEST_LOG")"
+done
+pass "remove fails without claiming success, and without touching sync, when the package can't be dropped"
 
 menu="$ROOT/default/omarchy/omarchy-menu.jsonc"
 grep -q '"install.service.omacloud".*omarchy-install-and-launch Omacloud omacloud com.ferdousbhai.Omacloud' "$menu" ||
