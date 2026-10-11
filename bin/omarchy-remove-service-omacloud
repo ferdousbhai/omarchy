@@ -10,12 +10,20 @@ omarchy-pkg-drop omacloud
 
 # systemd keeps the unit loaded after its file is gone, so a running sync can
 # still be stopped, and disable still clears a link left in ~/.config by a
-# manual enable.
+# manual enable. The links are cleared even if the stop fails, so sync can't
+# come back at the next login.
+stopped=true
 if systemctl --user -q is-active omacloud 2>/dev/null; then
-  systemctl --user stop omacloud
+  systemctl --user stop omacloud || stopped=false
 fi
 systemctl --user disable omacloud 2>/dev/null || true
 systemctl --user daemon-reload 2>/dev/null || true
+
+if [[ $stopped == false ]]; then
+  echo "Omacloud is uninstalled, but its sync is still running and won't start again at login." >&2
+  echo "Stop it now with: systemctl --user stop omacloud" >&2
+  exit 1
+fi
 
 echo ""
 echo "Omacloud has been removed."

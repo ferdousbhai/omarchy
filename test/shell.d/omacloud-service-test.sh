@@ -74,12 +74,17 @@ logged 'systemctl:--user disable omacloud' ||
   fail "remove clears enable links when sync isn't running" "$(cat "$TEST_LOG")"
 pass "remove clears the links of sync that's enabled but not running"
 
-# A stop that fails after the drop is reported, not hidden.
+# A stop that fails after the drop is reported with the remedy, and the
+# links are still cleared so sync doesn't come back at the next login.
 SERVICE_ACTIVE=1 STOP_FAILS=1 remove
 ((status != 0)) || fail "remove fails when running sync can't be stopped" "$output"
 [[ $output != *"has been removed"* ]] ||
   fail "remove doesn't claim success when sync can't be stopped" "$output"
-pass "remove fails without claiming success when running sync can't be stopped"
+[[ $output == *"systemctl --user stop omacloud"* ]] ||
+  fail "remove tells the user how to stop sync when its stop fails" "$output"
+logged 'systemctl:--user disable omacloud' ||
+  fail "remove clears enable links even when the stop fails" "$(cat "$TEST_LOG")"
+pass "remove fails with the remedy, and still clears sync's links, when running sync can't be stopped"
 
 # A failed drop leaves the service alone in every state, so there's nothing
 # to restore.
