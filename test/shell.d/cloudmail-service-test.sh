@@ -42,6 +42,18 @@ grep -qx 'omarchy-pkg-drop:cloudmail' "$TEST_LOG" ||
   fail "remove says the mail stays in Cloudflare" "$output"
 pass "remove drops the package and leaves the user's mail where it is"
 
+# A failed drop (say, the pacman lock is held) must not report success.
+cat >"$tmp_dir/bin/omarchy-pkg-drop" <<'SCRIPT'
+#!/bin/bash
+exit 1
+SCRIPT
+status=0
+output=$("$ROOT/bin/omarchy-remove-service-cloudmail") || status=$?
+(( status != 0 )) || fail "remove exits nonzero when the package drop fails"
+[[ $output != *"has been removed"* ]] ||
+  fail "remove does not claim success when the package drop fails" "$output"
+pass "remove reports a failed package drop instead of claiming success"
+
 menu="$ROOT/default/omarchy/omarchy-menu.jsonc"
 grep -q '"install.service.cloudmail".*omarchy-install-service-cloudmail' "$menu" ||
   fail "Install > Service > Cloudmail runs the installer"
