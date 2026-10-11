@@ -445,7 +445,7 @@ grep -q '^omarchy:plugin remove ferdousbhai.ghost --yes$' "$TEST_LOG" ||
   fail "Ghost removal takes the HUD plugin out of the running shell"
 pass "Ghost removal takes the HUD plugin out of the running shell"
 
-[[ ! -e $HOME/.config/omarchy/plugins/ferdousbhai.ghost ]] ||
+[[ ! -e $HOME/.config/omarchy/plugins/ferdousbhai.ghost && ! -L $HOME/.config/omarchy/plugins/ferdousbhai.ghost ]] ||
   fail "Ghost removal unlinks the plugin from the user's plugins directory"
 pass "Ghost removal unlinks the plugin from the user's plugins directory"
 

@@ -27,9 +27,30 @@ cat >"$tmp_dir/bin/omarchy-shell" <<'SCRIPT'
 #!/bin/bash
 printf 'omarchy-shell:%s\n' "$*" >>"$TEST_LOG"
 SCRIPT
+# A real rescan returns before the shell has discovered the plugin, so the stub
+# lists it only from the GHOST_DISCOVERY_POLLS'th poll on, and refuses to enable
+# it before then, as `omarchy plugin enable` refuses an unknown plugin.
 cat >"$tmp_dir/bin/omarchy" <<'SCRIPT'
 #!/bin/bash
 printf 'omarchy:%s\n' "$*" >>"$TEST_LOG"
+discovered() {
+  (( $(grep -c '^omarchy:plugin list --json$' "$TEST_LOG") >= ${GHOST_DISCOVERY_POLLS:-3} ))
+}
+case "$*" in
+  "plugin list --json")
+    if discovered; then
+      echo '[{"id":"ferdousbhai.ghost"}]'
+    else
+      echo '[]'
+    fi
+    ;;
+  "plugin enable ferdousbhai.ghost")
+    discovered || {
+      echo "omarchy-plugin-enable: plugin 'ferdousbhai.ghost' is not known" >&2
+      exit 1
+    }
+    ;;
+esac
 SCRIPT
 chmod +x "$tmp_dir/bin"/*
 export PATH="$tmp_dir/bin:$PATH"
@@ -58,6 +79,24 @@ pass "Ghost install starts the daemon only after the package is present"
 
 grep -q 'Super + Ctrl + G' "$tmp_dir/output" || fail "Ghost install names the summon key"
 pass "Ghost install names the summon key"
+
+[[ $(grep -n 'rescanPlugins' "$TEST_LOG" | cut -d: -f1) -lt $(grep -n '^omarchy:plugin list --json$' "$TEST_LOG" | head -n1 | cut -d: -f1) ]] ||
+  fail "Ghost install waits for the rescanned plugin to be discovered before enabling it"
+pass "Ghost install waits for the rescanned plugin to be discovered before enabling it"
+
+# A shell that never lists the plugin ends the install with the remedy, rather
+# than an enable that cannot succeed.
+rm -f "$HOME/.config/omarchy/plugins/ferdousbhai.ghost"
+: >"$TEST_LOG"
+rc=0
+GHOST_DISCOVERY_POLLS=1000 "$ROOT/bin/omarchy-install-ai-ghost" >"$tmp_dir/output" 2>&1 || rc=$?
+[[ $rc != 0 ]] || fail "Ghost install gives up when the shell never discovers the plugin"
+! grep -q '^omarchy:plugin enable' "$TEST_LOG" ||
+  fail "Ghost install gives up when the shell never discovers the plugin" "enabled anyway"
+grep -q 'omarchy plugin enable ferdousbhai.ghost' "$tmp_dir/output" ||
+  fail "Ghost install gives up when the shell never discovers the plugin" "no remedy: $(cat "$tmp_dir/output")"
+pass "Ghost install gives up when the shell never discovers the plugin"
+rm -f "$HOME/.config/omarchy/plugins/ferdousbhai.ghost"
 
 # A real directory where the plugin symlink belongs — an older install, or a
 # manual copy — must not be silently linked *inside*. `ln -sfn` does exactly
