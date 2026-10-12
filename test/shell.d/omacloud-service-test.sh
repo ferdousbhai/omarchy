@@ -110,6 +110,17 @@ SERVICE_ACTIVE=1 DISABLE_FAILS=1 remove
   fail "remove doesn't report a stop failure when sync stopped" "$output"
 pass "remove fails and names the leftover link when it can't clear sync's enable link"
 
+# A unit file of the user's own isn't an enable link, so it doesn't fail
+# the removal.
+mkdir -p "$XDG_CONFIG_HOME/systemd/user"
+echo "[Service]" >"$XDG_CONFIG_HOME/systemd/user/omacloud.service"
+SERVICE_ACTIVE=1 remove
+((status == 0)) || fail "remove succeeds with a user unit file but no enable link" "$output"
+[[ $output == *"has been removed"* ]] ||
+  fail "remove reports success with a user unit file but no enable link" "$output"
+rm "$XDG_CONFIG_HOME/systemd/user/omacloud.service"
+pass "remove doesn't mistake a user's own unit file for an enable link"
+
 # A failed drop leaves the service alone in every state, so there's nothing
 # to restore.
 for active in 1 ""; do

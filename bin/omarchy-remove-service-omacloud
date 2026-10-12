@@ -19,7 +19,9 @@ fi
 systemctl --user disable omacloud 2>/dev/null || true
 systemctl --user daemon-reload 2>/dev/null || true
 
-links=$(find "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user" -name omacloud.service 2>/dev/null || true)
+# Only the links in .wants/.requires start a unit at login; a unit file of
+# the user's own next to them doesn't.
+links=$(find "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user" \( -path '*.wants/omacloud.service' -o -path '*.requires/omacloud.service' \) 2>/dev/null || true)
 
 if [[ $stopped == false || -n $links ]]; then
   echo "Omacloud is uninstalled, but its sync isn't fully switched off:" >&2
