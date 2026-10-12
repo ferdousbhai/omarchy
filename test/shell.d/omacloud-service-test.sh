@@ -11,8 +11,11 @@ mkdir -p "$tmp_dir/bin"
 export TEST_LOG="$tmp_dir/log"
 
 # Package removal and systemd are stubbed; the script's job is what it asks
-# for, and in what order. The drop fails when DROP_FAILS is set, and
-# systemctl answers is-active from SERVICE_ACTIVE.
+# for, and in what order. The drop fails when DROP_FAILS is set, systemctl
+# answers is-active from SERVICE_ACTIVE, and disable removes the enable link
+# under XDG_CONFIG_HOME unless DISABLE_FAILS is set.
+export XDG_CONFIG_HOME="$tmp_dir/config"
+wants_link="$XDG_CONFIG_HOME/systemd/user/default.target.wants/omacloud.service"
 cat >"$tmp_dir/bin/omarchy-pkg-drop" <<'SCRIPT'
 #!/bin/bash
 printf 'omarchy-pkg-drop:%s\n' "$*" >>"$TEST_LOG"
@@ -25,6 +28,11 @@ for arg; do
   case $arg in
     is-active) [[ -n ${SERVICE_ACTIVE:-} ]]; exit ;;
     stop) [[ -z ${STOP_FAILS:-} ]]; exit ;;
+    disable)
+      [[ -z ${DISABLE_FAILS:-} ]] || exit 1
+      rm -f "$XDG_CONFIG_HOME/systemd/user/default.target.wants/omacloud.service"
+      exit
+      ;;
   esac
 done
 SCRIPT
@@ -34,6 +42,8 @@ export PATH="$tmp_dir/bin:$PATH"
 # Runs the remover; leaves its output in $output and exit status in $status.
 remove() {
   : >"$TEST_LOG"
+  mkdir -p "${wants_link%/*}"
+  ln -sfn /usr/lib/systemd/user/omacloud.service "$wants_link"
   status=0
   output=$("$ROOT/bin/omarchy-remove-service-omacloud" 2>&1) || status=$?
 }
@@ -59,6 +69,8 @@ logged 'systemctl:--user stop omacloud' ||
   fail "remove stops running sync" "$(cat "$TEST_LOG")"
 logged 'systemctl:--user disable omacloud' ||
   fail "remove clears enable links left in ~/.config" "$(cat "$TEST_LOG")"
+[[ ! -L $wants_link ]] ||
+  fail "remove leaves no enable link in ~/.config" "$(cat "$TEST_LOG")"
 (($(line_of 'omarchy-pkg-drop:omacloud') < $(line_of 'systemctl:--user stop omacloud'))) ||
   fail "remove drops the package before touching the service" "$(cat "$TEST_LOG")"
 [[ $output == *"Your files stay"* ]] ||
@@ -82,9 +94,21 @@ SERVICE_ACTIVE=1 STOP_FAILS=1 remove
   fail "remove doesn't claim success when sync can't be stopped" "$output"
 [[ $output == *"systemctl --user stop omacloud"* ]] ||
   fail "remove tells the user how to stop sync when its stop fails" "$output"
-logged 'systemctl:--user disable omacloud' ||
-  fail "remove clears enable links even when the stop fails" "$(cat "$TEST_LOG")"
+[[ $output != *"start at login"* && ! -L $wants_link ]] ||
+  fail "remove still clears enable links when the stop fails" "$output"
 pass "remove fails with the remedy, and still clears sync's links, when running sync can't be stopped"
+
+# A disable that leaves the enable link behind is reported with the link,
+# rather than promising sync won't start at login.
+SERVICE_ACTIVE=1 DISABLE_FAILS=1 remove
+((status != 0)) || fail "remove fails when an enable link is left behind" "$output"
+[[ $output != *"has been removed"* ]] ||
+  fail "remove doesn't claim success when an enable link is left behind" "$output"
+[[ $output == *"start at login"*"$wants_link"* ]] ||
+  fail "remove names the enable link it couldn't clear" "$output"
+[[ $output != *"Stop it with"* ]] ||
+  fail "remove doesn't report a stop failure when sync stopped" "$output"
+pass "remove fails and names the leftover link when it can't clear sync's enable link"
 
 # A failed drop leaves the service alone in every state, so there's nothing
 # to restore.
