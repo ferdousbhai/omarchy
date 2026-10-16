@@ -2,11 +2,21 @@
 
 # omarchy:summary=Install and start the Dropbox service. Must then be authenticated via the web.
 
+# Dropbox only ships an x86_64 client, which ARM runs under box64. box64
+# needs 4K memory pages, and Asahi kernels on Apple Silicon use 16K pages:
+# there the client segfaults in its bundled libffi within seconds, and still
+# crashes, after minutes, with box64's dynarec turned off.
+if [[ $(uname -m) == "aarch64" ]] && (( $(getconf PAGESIZE) != 4096 )); then
+  echo "Dropbox can't run on this system." >&2
+  echo "Its Linux client is x86_64-only, and box64 can't run it with this kernel's $(( $(getconf PAGESIZE) / 1024 ))K memory pages." >&2
+  echo "Maestral (yay -S maestral) is an open-source Dropbox client that runs natively on ARM." >&2
+  exit 1
+fi
+
 echo "Installing all dependencies..."
 if [[ $(uname -m) == "aarch64" ]]; then
-  # Dropbox only ships an x86_64 client. The ARM package runs it under box64,
-  # and both live in the official edge repository, which Apple Silicon keeps
-  # at Usage = Sync, so they have to be requested from it by name. Plain names
+  # The ARM package and box64 live in the official edge repository, which is
+  # Usage = Sync on ARM, so they have to be requested from it by name. Plain names
   # pass omarchy-pkg-add's availability check (pacman -Si sees that repository)
   # and then fail in pacman -S with "target not found".
   box64_present=0
