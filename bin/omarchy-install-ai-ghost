@@ -9,7 +9,7 @@ echo "Installing Ghost..."
 omarchy-pkg-add ghost
 
 # The package carries the daemon, the HUD plugin, the CLI, and the computer-use
-# helper; the browser extension is its own product, installed from the browser.
+# helper; browser automation uses the optional agent-browser CLI through Bash.
 # Two things need this login's hand: the daemon is a user unit, and the HUD is
 # an omarchy-shell plugin, so it is linked into this user's plugins directory
 # and enabled in the shell already running.
@@ -28,8 +28,7 @@ if ! ln -sfnT /usr/share/ghost/plugin "$plugin_link" 2>/dev/null; then
   exit 1
 fi
 omarchy-shell shell rescanPlugins
-# The rescan returns before the shell has walked the plugin directories, so
-# wait for it to list the plugin, as `omarchy plugin add` does, before enabling.
+# Rescanning is asynchronous; wait for discovery before enabling the plugin.
 discovered=0
 for (( attempt = 0; attempt < 40; attempt++ )); do
   if omarchy plugin list --json | jq -e 'any(.[]; .id == "ferdousbhai.ghost")' >/dev/null; then
