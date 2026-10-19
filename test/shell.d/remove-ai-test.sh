@@ -486,7 +486,7 @@ pass "Ghost removal drops the package"
 ! grep -q '^systemctl:' "$TEST_LOG" || fail "Ghost UI removal leaves the daemon running"
 grep -q '^sudo:pacman -D --asexplicit ghost-runtime$' "$TEST_LOG" ||
   fail "Ghost UI removal preserves the runtime as an explicit package"
-[[ $(grep -n '^sudo:pacman -D' "$TEST_LOG" | cut -d: -f1) -lt $(grep -n '^drop:ghost$' "$TEST_LOG" | cut -d: -f1) ]] ||
+(( $(grep -n '^sudo:pacman -D' "$TEST_LOG" | cut -d: -f1) < $(grep -n '^drop:ghost$' "$TEST_LOG" | cut -d: -f1) )) ||
   fail "Ghost UI removal preserves the runtime before removing the UI"
 pass "Ghost UI removal preserves the installed and running runtime"
 

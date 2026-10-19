@@ -73,14 +73,14 @@ pass "Ghost install enables the HUD plugin in the running shell"
   fail "Ghost install links the packaged plugin into the user's plugins directory"
 pass "Ghost install links the packaged plugin into the user's plugins directory"
 
-[[ $(grep -n '^add:ghost$' "$TEST_LOG" | cut -d: -f1) -lt $(grep -n 'enable --now' "$TEST_LOG" | cut -d: -f1) ]] ||
+(( $(grep -n '^add:ghost$' "$TEST_LOG" | cut -d: -f1) < $(grep -n 'enable --now' "$TEST_LOG" | cut -d: -f1) )) ||
   fail "Ghost install starts the daemon only after the package is present"
 pass "Ghost install starts the daemon only after the package is present"
 
 grep -q 'Super + Ctrl + G' "$tmp_dir/output" || fail "Ghost install names the summon key"
 pass "Ghost install names the summon key"
 
-[[ $(grep -n 'rescanPlugins' "$TEST_LOG" | cut -d: -f1) -lt $(grep -n '^omarchy:plugin list --json$' "$TEST_LOG" | head -n1 | cut -d: -f1) ]] ||
+(( $(grep -n 'rescanPlugins' "$TEST_LOG" | cut -d: -f1) < $(grep -n '^omarchy:plugin list --json$' "$TEST_LOG" | head -n1 | cut -d: -f1) )) ||
   fail "Ghost install waits for the rescanned plugin to be discovered before enabling it"
 pass "Ghost install waits for the rescanned plugin to be discovered before enabling it"
 
